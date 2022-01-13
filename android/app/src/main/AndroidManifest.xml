@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="edu.cnm.deepdive.craps_simulator_flutter">
    <application
-        android:label="craps_simulator_flutter"
+        android:label="Craps Simulator"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
