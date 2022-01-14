@@ -17,6 +17,7 @@ class MainViewModel {
   final StreamController<Snapshot> _snapshotStreamController;
   final ReceivePort _receivePort;
   late final SendPort _sendPort;
+  // ignore: unused_field
   late final Isolate _simulator;
 
   late bool _running;
@@ -39,7 +40,7 @@ class MainViewModel {
 
   void simulate([bool ignoreRunning = false]) {
     if (ignoreRunning || _running) {
-      _sendPort.send({'simulate': 100000});
+      _sendPort.send({'simulate': 1000000}); // TODO: Take from settings
     }
   }
 

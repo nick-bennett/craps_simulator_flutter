@@ -1,20 +1,24 @@
-import 'package:craps_simulator_flutter/controller/about.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../model/craps.dart';
 import '../viewmodel/main_view_model.dart';
 
-class HomeRoute extends StatefulWidget {
-  const HomeRoute({Key? key}) : super(key: key);
+class Home extends StatefulWidget {
+  const Home({Key? key}) : super(key: key);
 
   final String title = 'Craps Simulator'; // TODO: Localize
 
   @override
-  State<HomeRoute> createState() => _HomeRouteState();
+  State<Home> createState() => _HomeState();
 }
 
-class _HomeRouteState extends State<HomeRoute> {
+class _HomeState extends State<Home> {
+  static const double _summaryPadding = 8;
+  static const String _iconPath = 'assets/images/icon.png';
+  static const int _iconScale = 3;
+
   final MainViewModel _viewModel = MainViewModel();
   final NumberFormat _percentFormat = NumberFormat('0.00%'); // TODO: Localize
   final NumberFormat _integerFormat = NumberFormat('#,##0'); // TODO: Localize
@@ -22,10 +26,14 @@ class _HomeRouteState extends State<HomeRoute> {
     _OverflowItem.reset: 'Reset', // TODO: Localize
     _OverflowItem.settings: 'Settings', // TODO: Localize
     _OverflowItem.about: 'About', // TODO: Localize
-    _OverflowItem.licenses: 'Licenses', // TODO: Localize
   };
 
   bool _running = false;
+
+  late ThemeData _theme;
+  late ColorScheme _colorScheme;
+  late TextTheme _textTheme;
+  late IconThemeData _iconTheme;
 
   void _start() {
     setState(() => _running = true);
@@ -44,36 +52,20 @@ class _HomeRouteState extends State<HomeRoute> {
 
   @override
   Widget build(BuildContext context) {
-    ThemeData theme = Theme.of(context);
+    _theme = Theme.of(context);
+    _colorScheme = _theme.colorScheme;
+    _textTheme = _theme.textTheme;
+    _iconTheme = IconTheme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
-        actions: _buildActions(context),
+        actions: _actions(context),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: <Widget>[
-            Container(
-              alignment: Alignment.center,
-              color: theme.colorScheme.primary,
-              padding: const EdgeInsets.all(8.0),
-              child: StreamBuilder<Snapshot>(
-                stream: _viewModel.snapshotStream,
-                builder: (context, event) => Text(
-                  _summary(event),
-                  style: theme.textTheme.bodyText1
-                      ?.apply(color: theme.colorScheme.onPrimary),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      body: _body(context),
     );
   }
 
-  List<Widget> _buildActions(BuildContext context) {
+  List<Widget> _actions(BuildContext context) {
     return <Widget>[
       if (!_running)
         IconButton(
@@ -94,14 +86,33 @@ class _HomeRouteState extends State<HomeRoute> {
           tooltip: 'Pause simulation', // TODO: Localize
         ),
       PopupMenuButton<_OverflowItem>(
-        itemBuilder: _buildOverflowActions,
+        itemBuilder: _overflowActions,
         onSelected: _onOverflowItemSelected,
       ),
     ];
   }
 
-  List<PopupMenuEntry<_OverflowItem>> _buildOverflowActions(
-      BuildContext context) {
+  Widget _body(BuildContext context) {
+    return StreamBuilder<Snapshot>(
+      stream: _viewModel.snapshotStream,
+      builder: (context, event) {
+        List<Widget?> children = <Widget?>[];
+        if (event.hasData) {
+          Snapshot snapshot = event.data!;
+          children.addAll([_rolls(snapshot), _summary(snapshot)]);
+        }
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: children
+              .where((element) => element != null)
+              .map<Widget>((element) => element!)
+              .toList(growable: false),
+        );
+      },
+    );
+  }
+
+  List<PopupMenuEntry<_OverflowItem>> _overflowActions(BuildContext context) {
     return <PopupMenuEntry<_OverflowItem>>[
       PopupMenuItem<_OverflowItem>(
         value: _OverflowItem.reset,
@@ -115,10 +126,6 @@ class _HomeRouteState extends State<HomeRoute> {
         value: _OverflowItem.about,
         child: Text(_overflowLabels[_OverflowItem.about]!),
       ),
-      PopupMenuItem<_OverflowItem>(
-        value: _OverflowItem.licenses,
-        child: Text(_overflowLabels[_OverflowItem.licenses]!),
-      ),
     ];
   }
 
@@ -130,43 +137,75 @@ class _HomeRouteState extends State<HomeRoute> {
       case _OverflowItem.settings:
         break;
       case _OverflowItem.about:
-        _navigateToAbout();
-        break;
-      case _OverflowItem.licenses:
-        _navigateToLicenses();
+        _showAbout();
         break;
     }
   }
 
-  String _summary(AsyncSnapshot event) {
-    String summary;
-    if (event.hasData) {
-      Snapshot snapshot = event.data as Snapshot;
-      int rounds = snapshot.wins + snapshot.losses;
-      double percentage = (rounds > 0) ? (snapshot.wins / rounds) : 0;
-      String formattedWins = _integerFormat.format(snapshot.wins);
-      String formattedRounds = _integerFormat.format(rounds);
-      String formattedPercent = _percentFormat.format(percentage);
-      summary = // TODO: Localize
-          '$formattedWins wins / $formattedRounds rounds = $formattedPercent';
-    } else {
-      summary = '';
-    }
-    return summary;
+  Widget? _rolls(Snapshot snapshot) {
+    // TODO: Return ListBuilder
   }
 
-  void _navigateToAbout() {
-    Navigator.push<void>(
-      context,
-      MaterialPageRoute<void>(builder: (context) => const AboutRoute()),
+  Widget _summary(Snapshot snapshot) {
+    int rounds = snapshot.wins + snapshot.losses;
+    double percentage = (rounds > 0) ? (snapshot.wins / rounds) : 0;
+    String formattedWins = _integerFormat.format(snapshot.wins);
+    String formattedRounds = _integerFormat.format(rounds);
+    String formattedPercent = _percentFormat.format(percentage);
+    String summary =
+        '$formattedWins wins / $formattedRounds rounds = $formattedPercent'; // TODO: Localize.
+    return Container(
+      alignment: Alignment.center,
+      color: _colorScheme.primary,
+      padding: const EdgeInsets.all(_summaryPadding),
+      child: Text(
+        summary,
+        style: _textTheme.bodyText1?.apply(color: _colorScheme.onPrimary),
+      ),
     );
   }
 
-  void _navigateToLicenses() {
-    DefaultAssetBundle.of(context).loadString('assets/text/notice.txt').then(
-        (notice) =>
-            showLicensePage(context: context, applicationLegalese: notice));
+  void _showAbout() {
+    _appInfo().then<void>((Map<String, String> info) {
+      showAboutDialog(
+        context: context,
+        applicationIcon: Image(
+          image: const AssetImage(_iconPath),
+          width: _iconTheme.size! * _iconScale,
+          height: _iconTheme.size! * _iconScale,
+        ),
+        applicationName: info['name'],
+        applicationVersion: info['version'],
+        children: <Widget>[
+          Text(
+            info['about']!,
+            style: _textTheme.bodyText1,
+          ),
+          Text(
+            info['notice']!,
+            style: _textTheme.caption,
+          ),
+        ],
+      );
+    });
+  }
+
+  Future<Map<String, String>> _appInfo() {
+    AssetBundle bundle = DefaultAssetBundle.of(context);
+    return Future.wait<Object>(<Future<Object>>[
+      bundle.loadString('assets/text/about.txt', cache: true),
+      bundle.loadString('assets/text/notice.txt', cache: true),
+      PackageInfo.fromPlatform(),
+    ]).then<Map<String, String>>((List<Object> content) {
+      PackageInfo info = content[2] as PackageInfo;
+      return {
+        'about': content[0] as String,
+        'notice': content[1] as String,
+        'name': info.appName,
+        'version': info.version,
+      };
+    });
   }
 }
 
-enum _OverflowItem { reset, settings, about, licenses }
+enum _OverflowItem { reset, settings, about }
