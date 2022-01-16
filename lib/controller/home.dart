@@ -5,10 +5,16 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../model/craps.dart';
 import '../viewmodel/main_view_model.dart';
 
+/// Implements the Craps simulation home screen.
+///
+/// This screen presents an [AppBar] of actions to control the simulation, along
+/// with an "overflow" menu (of [PopupMenuEntry] items for resetting the
+/// simulation, accessing a settings screen (not yet implemented), and
+/// displaying an "About" dialog.
 class Home extends StatefulWidget {
-  const Home({Key? key}) : super(key: key);
+  final String title = 'Craps Simulator';
 
-  final String title = 'Craps Simulator'; // TODO: Localize
+  const Home({Key? key}) : super(key: key); // TODO: Localize
 
   @override
   State<Home> createState() => _HomeState();
@@ -22,6 +28,7 @@ class _HomeState extends State<Home> {
   final MainViewModel _viewModel = MainViewModel();
   final NumberFormat _percentFormat = NumberFormat('0.00%'); // TODO: Localize
   final NumberFormat _integerFormat = NumberFormat('#,##0'); // TODO: Localize
+
   final Map<_OverflowItem, String> _overflowLabels = {
     _OverflowItem.reset: 'Reset', // TODO: Localize
     _OverflowItem.settings: 'Settings', // TODO: Localize
@@ -34,21 +41,6 @@ class _HomeState extends State<Home> {
   late ColorScheme _colorScheme;
   late TextTheme _textTheme;
   late IconThemeData _iconTheme;
-
-  void _start() {
-    setState(() => _running = true);
-    _viewModel.start();
-  }
-
-  void _stop() {
-    setState(() => _running = false);
-    _viewModel.stop();
-  }
-
-  void _reset() {
-    _stop();
-    _viewModel.reset();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +84,23 @@ class _HomeState extends State<Home> {
     ];
   }
 
+  Future<Map<String, String>> _appInfo() {
+    AssetBundle bundle = DefaultAssetBundle.of(context);
+    return Future.wait<Object>(<Future<Object>>[
+      bundle.loadString('assets/text/about.txt', cache: true),
+      bundle.loadString('assets/text/notice.txt', cache: true),
+      PackageInfo.fromPlatform(),
+    ]).then<Map<String, String>>((List<Object> content) {
+      PackageInfo info = content[2] as PackageInfo;
+      return {
+        'about': content[0] as String,
+        'notice': content[1] as String,
+        'name': info.appName,
+        'version': info.version,
+      };
+    });
+  }
+
   Widget _body(BuildContext context) {
     return StreamBuilder<Snapshot>(
       stream: _viewModel.snapshotStream,
@@ -112,6 +121,19 @@ class _HomeState extends State<Home> {
     );
   }
 
+  void _onOverflowItemSelected(_OverflowItem item) {
+    switch (item) {
+      case _OverflowItem.reset:
+        _reset();
+        break;
+      case _OverflowItem.settings:
+        break;
+      case _OverflowItem.about:
+        _showAbout();
+        break;
+    }
+  }
+
   List<PopupMenuEntry<_OverflowItem>> _overflowActions(BuildContext context) {
     return <PopupMenuEntry<_OverflowItem>>[
       PopupMenuItem<_OverflowItem>(
@@ -129,40 +151,13 @@ class _HomeState extends State<Home> {
     ];
   }
 
-  void _onOverflowItemSelected(_OverflowItem item) {
-    switch (item) {
-      case _OverflowItem.reset:
-        _reset();
-        break;
-      case _OverflowItem.settings:
-        break;
-      case _OverflowItem.about:
-        _showAbout();
-        break;
-    }
+  void _reset() {
+    _stop();
+    _viewModel.reset();
   }
 
   Widget? _rolls(Snapshot snapshot) {
     // TODO: Return ListBuilder
-  }
-
-  Widget _summary(Snapshot snapshot) {
-    int rounds = snapshot.wins + snapshot.losses;
-    double percentage = (rounds > 0) ? (snapshot.wins / rounds) : 0;
-    String formattedWins = _integerFormat.format(snapshot.wins);
-    String formattedRounds = _integerFormat.format(rounds);
-    String formattedPercent = _percentFormat.format(percentage);
-    String summary =
-        '$formattedWins wins / $formattedRounds rounds = $formattedPercent'; // TODO: Localize.
-    return Container(
-      alignment: Alignment.center,
-      color: _colorScheme.primary,
-      padding: const EdgeInsets.all(_summaryPadding),
-      child: Text(
-        summary,
-        style: _textTheme.bodyText1?.apply(color: _colorScheme.onPrimary),
-      ),
-    );
   }
 
   void _showAbout() {
@@ -190,21 +185,33 @@ class _HomeState extends State<Home> {
     });
   }
 
-  Future<Map<String, String>> _appInfo() {
-    AssetBundle bundle = DefaultAssetBundle.of(context);
-    return Future.wait<Object>(<Future<Object>>[
-      bundle.loadString('assets/text/about.txt', cache: true),
-      bundle.loadString('assets/text/notice.txt', cache: true),
-      PackageInfo.fromPlatform(),
-    ]).then<Map<String, String>>((List<Object> content) {
-      PackageInfo info = content[2] as PackageInfo;
-      return {
-        'about': content[0] as String,
-        'notice': content[1] as String,
-        'name': info.appName,
-        'version': info.version,
-      };
-    });
+  void _start() {
+    setState(() => _running = true);
+    _viewModel.start();
+  }
+
+  void _stop() {
+    setState(() => _running = false);
+    _viewModel.stop();
+  }
+
+  Widget _summary(Snapshot snapshot) {
+    int rounds = snapshot.wins + snapshot.losses;
+    double percentage = (rounds > 0) ? (snapshot.wins / rounds) : 0;
+    String formattedWins = _integerFormat.format(snapshot.wins);
+    String formattedRounds = _integerFormat.format(rounds);
+    String formattedPercent = _percentFormat.format(percentage);
+    String summary =
+        '$formattedWins wins / $formattedRounds rounds = $formattedPercent'; // TODO: Localize.
+    return Container(
+      alignment: Alignment.center,
+      color: _colorScheme.primary,
+      padding: const EdgeInsets.all(_summaryPadding),
+      child: Text(
+        summary,
+        style: _textTheme.bodyText1?.apply(color: _colorScheme.onPrimary),
+      ),
+    );
   }
 }
 

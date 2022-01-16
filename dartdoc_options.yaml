@@ -1,0 +1,2 @@
+dartdoc:
+  exclude: generated_plugin_registrant
